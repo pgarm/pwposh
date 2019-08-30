@@ -1,2 +1,2 @@
-# pwposh
+# PwPoSh
 Password-related scriptlets module
