@@ -78,7 +78,7 @@ function Push-Password {
 
     if ($Reply.url_token) {
         # Emulating the first_view = false; can be removed when the API starts handling it properly
-        if (!$FirstView) {Invoke-WebRequest ("https://$Server/p/" + $Reply.url_token)}
+        if (!$FirstView) {Invoke-WebRequest ("https://$Server/p/" + $Reply.url_token) | Out-Null}
         return ("https://$Server/p/" + $Reply.url_token)
     } else {
         ThrowError "Unable to get URL from service"
