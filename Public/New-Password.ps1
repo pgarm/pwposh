@@ -24,16 +24,19 @@ function New-Password {
     Can be aliased as -s
     .PARAMETER Simple
     Sets complexity to off (generates an all-lowercase password).
-    Can be aliased as -x
-    .PARAMETER Hard
+    Can be aliased as -a
+    .PARAMETER ExcludeHard
     Removes most ambiguous characters from available pool to make sure password is still legible even if written by hand on paper.
     Can be aliased as -h
-    .PARAMETER Soft
+    .PARAMETER ExcludeSoft
     Removes some ambiguous characters from available pool to make sure password is fully readable on screen regardless of font and
     accepted by most applications that have restrictions due to database limitations.
     Can be aliased as -o
-    .PARAMETER Exclude
+    .PARAMETER ExcludeChars
     Specifies custom list of characters to exclude from available pool to adapt to specific requirements.
+    Can be aliased as -x
+    .PARAMETER Entropy
+    Specifies minimum entropy value. Would be reduced in processing if set above the thoretical maximum. Default value is 3 (max for 8-character string)
     Can be aliased as -e
     .EXAMPLE 
     New-Password
@@ -47,19 +50,26 @@ function New-Password {
 
     [CmdletBinding(DefaultParameterSetName="Full")]
     param (
-        [Parameter(Position=0)][Alias("l")][int]$Length=8,
+        [Parameter(Position=0)][ValidateRange(4,64)][Alias("l")][int]$Length=8,
+        [ValidateRange(2,6)][Alias("e")][decimal]$Entropy=3,
         [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
             [Alias("c")][int]$Capitals=[System.Math]::Floor($Length/4),
         [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
             [Alias("d")][int]$Digits=[System.Math]::Floor($Length/6),
         [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
             [Alias("s")][int]$Symbols=[System.Math]::Floor($Length/8),
-        [Parameter(ParameterSetName="Simple")][Alias("x")][switch]$Simple,
+        [Parameter(ParameterSetName="Simple")][Alias("a")][switch]$Simple,
         [Parameter(ParameterSetName="Hard")][Alias("Hard","h")][switch]$ExcludeHard,
         [Parameter(ParameterSetName="Soft")][Alias("Soft","o")][switch]$ExcludeSoft,
-        [Parameter(ParameterSetName="Custom")][Alias("Exclude","e")][string]$ExcludeChars
+        [Parameter(ParameterSetName="Custom")][Alias("Exclude","x")][string]$ExcludeChars
     )
     
+    # If the requested Entropy is higher than theoretical maximum for length, reduce it to a resonable value
+    if ($Entropy -gt [math]::Log($Length,2)) {
+        $Entropy = [math]::Log($Length,2) * .95
+        Write-Host "Requested entropy was too high, reducing to $Entropy"
+    }
+
     $DigList = "0123456789"
     $LowList = "abcdefghijklmnopqrstuvwxyz"
     $CapList = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -91,16 +101,28 @@ function New-Password {
         }
     }
 
-    $SecPwd = New-Object -TypeName securestring
-    $Length..1 | ForEach-Object {
-        switch (Get-Random ($_)) {
-            {$_ -lt ($Lowers)} {$SecPwd.AppendChar(($LowList.ToCharArray() | Get-Random)); $Lowers += -1; $Length += -1; break}
-            {$_ -lt ($Lowers + $Capitals)} {$SecPwd.AppendChar(($CapList.ToCharArray() | Get-Random)); $Capitals += -1; $Length += -1; break}
-            {$_ -lt ($Lowers + $Capitals + $Digits)} {$SecPwd.AppendChar(($DigList.ToCharArray() | Get-Random)); $Digits += -1; $Length += -1; break}
-            {$_ -lt ($Lowers + $Capitals + $Digits + $Symbols)} {$SecPwd.AppendChar(($SymList.ToCharArray() | Get-Random)); $Symbols += -1; $Length += -1; break}
-            Default {$SecPwd.AppendChar(($WhiList.ToCharArray() | Get-Random)); $Length += -1; break}
+    # Generate password of at least the desired strength (in terms of entropy, defaulting to 3)
+    do {
+        # Set disposable counters so that re-run is easy to do
+        $WorkSet = [pscustomobject]@{
+            Length = $Length
+            Lowers = $Lowers
+            Capitals = $Capitals
+            Digits = $Digits
+            Symbols = $Symbols
         }
-    }
+
+        $SecPwd = New-Object -TypeName securestring
+        ($WorkSet.Length)..1 | ForEach-Object {
+            switch (Get-Random ($_)) {
+                {$_ -lt ($WorkSet.Lowers)} {$SecPwd.AppendChar(($LowList.ToCharArray() | Get-Random)); $WorkSet.Lowers += -1; $WorkSet.Length += -1; break}
+                {$_ -lt ($WorkSet.Lowers + $WorkSet.Capitals)} {$SecPwd.AppendChar(($CapList.ToCharArray() | Get-Random)); $WorkSet.Capitals += -1; $WorkSet.Length += -1; break}
+                {$_ -lt ($WorkSet.Lowers + $WorkSet.Capitals + $WorkSet.Digits)} {$SecPwd.AppendChar(($DigList.ToCharArray() | Get-Random)); $WorkSet.Digits += -1; $WorkSet.Length += -1; break}
+                {$_ -lt ($WorkSet.Lowers + $WorkSet.Capitals + $WorkSet.Digits + $WorkSet.Symbols)} {$SecPwd.AppendChar(($SymList.ToCharArray() | Get-Random)); $WorkSet.Symbols += -1; $WorkSet.Length += -1; break}
+                Default {$SecPwd.AppendChar(($WhiList.ToCharArray() | Get-Random)); $WorkSet.Length += -1; break}
+            }
+        }
+    } while (([System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecPwd)) | Get-StringEntropy) -lt $Entropy)
 
     return $SecPwd
 }

@@ -61,24 +61,28 @@ function Push-Password {
         [securestring]$Password = ConvertTo-SecureString ([string]$Password) -AsPlainText -Force
     }
 
+    # Construct REST call parameters
     $Url = "https://$Server/p.json"
-    $Body = @{
-        # Even though it's not perfectly secure, the API only accepts plaintext password so we have to recover it from SecureString type
-        'password[payload]' = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password))
-        'password[expire_after_days]' = $Days
-        'password[expire_after_views]' = $Views
+    $body = [pscustomobject]@{
+        password = [pscustomobject]@{
+            payload = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password))
+            expire_after_days = $Days
+            expire_after_views = $Views
+            deletable_by_viewer = $KillSwitch.IsPresent.ToString()
+            first_view = $FirstView.IsPresent.ToString()
+            # first_view option is currently ignored by API, always returning True - hence the emulation piece below
+        }
     }
-    if ($KillSwitch) {$Body.Add('password[deletable_by_viewer]',"True")}
-    # if ($FirstView) {$Body.Add('password[first_view]',"True")}
-    # When the API begins to properly handle first_view flag in the request, uncomment above
-
-    $Reply = Invoke-RestMethod -Method 'Post' -Uri $url -Body $body
+    
+    # Push the password, retrieve the response
+    $Reply = Invoke-RestMethod -Method 'Post' -Uri $url -ContentType "application/json" -Body ($body | ConvertTo-Json)
     # Clean up the decoded password from memory 
-    $Body.Remove('password[payload]'); [System.GC]::Collect()
+    $Body.password.payload = $null
 
     if ($Reply.url_token) {
         # Emulating the first_view = false; can be removed when the API starts handling it properly
-        if (!$FirstView) {Invoke-WebRequest ("https://$Server/p/" + $Reply.url_token) | Out-Null}
+        # Triggered if returned first_view is True and requested is False (only case where boolean can be greater than)
+        if ($Reply.first_view -gt $FirstView.IsPresent) {Invoke-WebRequest ("https://$Server/p/" + $Reply.url_token) | Out-Null}
         return ("https://$Server/p/" + $Reply.url_token)
     } else {
         ThrowError "Unable to get URL from service"
