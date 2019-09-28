@@ -65,7 +65,7 @@ function Push-Password {
     $Url = "https://$Server/p.json"
     $body = [pscustomobject]@{
         password = [pscustomobject]@{
-            payload = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password))
+            payload = ConvertFrom-SecurePassword $Password
             expire_after_days = $Days
             expire_after_views = $Views
             deletable_by_viewer = $KillSwitch.IsPresent.ToString()
