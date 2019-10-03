@@ -5,5 +5,13 @@ Started as a way to automate using [Peter Giacomo Lombardo](https://github.com/p
 ## New-Password
 Generates random password with multiple configuration options. Currently not using CryptoRNG for simplicity and speed.
 
-## Push-Password
+## Publish-Password
 Pushes the generated (or any other) to https://pwpush.com or a privately hosted instance.
+
+## Get-Password
+Retieves the password using the link in https://pwpush.com/p/asdfghjkrwqwd format.
+Currently a stub function, as the API retrieves payload in Base64-encoded encrypted form.
+
+## Unpublish-Password
+Deletes the password from the server using the link in https://pwpush.com/p/asdfghjkrwqwd format.
+Current build of pwpusher returns HTTP/500 on successful `DELETE` operation, the function captures and mentions that in the output.

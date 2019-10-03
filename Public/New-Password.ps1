@@ -127,4 +127,4 @@ function New-Password {
     return $SecPwd
 }
 
-New-Alias newpw New-Password
+New-Alias npwd New-Password
