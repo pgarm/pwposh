@@ -17,8 +17,12 @@ Currently a stub function, as the API retrieves payload in Base64-encoded encryp
 Deletes the password from the server using the link in https://pwpush.com/p/asdfghjkrwqwd format.
 Current build of pwpusher returns HTTP/500 on successful `DELETE` operation, the function captures and mentions that in the output.
 
+## Get-PasswordWeb
+A function to work around current limitation of pwpusher on password retrieval via REST - will send a generic web request and parse it.
+Will be deprecated as pwpusher is updated for REST to work properly.
+
 ## To-Do
 - [X] Get-Password function to retrieve the password from the server. Implemented as stub function until the reply from service includes decryted password
-- [ ] Add secondary password retrieve method (over generic web request) to work around encryption in REST response.
+- [X] Add secondary password retrieve method (over generic web request) to work around encryption in REST response.
 - [X] Unpublish-Password function to forcibly remove the password from the server (if allowed by deleteable_by_user)
 - [ ] Add $Server/URL validation to make sure it's in proper format and can be reached over port 443/80 based on protocol prefix if supplied or other explicit port

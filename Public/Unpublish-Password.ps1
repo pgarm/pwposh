@@ -28,7 +28,6 @@ function Unpublish-Password {
         # When it's fixed, the next line would eval deletion
         if ($Reply.deleted) {Write-Host "Unpublished the password successfully from $Uri (or it had been deleted already)"}
     } catch {
-        $_.Exception; $_.FullyQualifiedErrorId; $_.PSMessageDetails
         if ($_.Exception -notmatch '500') {
             Write-Error "Error removing the password"
         } elseif ((ConvertFrom-Json $_.ErrorDetails).deleted) {

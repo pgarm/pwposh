@@ -1,7 +1,8 @@
-function Get-Password {
+function Get-PasswordWeb {
     <#
     .SYNOPSIS
     Pulls the password from public pwpush.com or a private instance of Password Pusher by using a full link or a combination of server and password.
+    Uses generic HTTP web request fo rcompatibility with older builds of pwpusher
     .DESCRIPTION
     This complements Peter Giacomo Lombardo's genius idea of sending a temporary link to password instead of plaintext (https://github.com/pglombardo/PasswordPusher).
     By default will work against publicly hosted instance at https://pwpush.com, but can use your privately hosted instance by specifying the target as script parameter.
@@ -14,7 +15,7 @@ function Get-Password {
     Delete the password from database (if allowed by pusher originally), False by default
     Can be aliased as -k
     .EXAMPLE 
-    $pwdlink | Get-Password
+    $pwdlink | Get-PasswordWeb
 
     Pulls the password from the specified link.
     #>
@@ -27,27 +28,25 @@ function Get-Password {
 
     # Pull the password
     try {
-        $Reply = Invoke-RestMethod -Method 'Get' -Uri "$Uri.json"
+        $Reply = Invoke-WebRequest -Uri $Uri
     } catch {
         Write-Error "Unable to get the response from service"
     }
 
-    switch ($Reply.expired + $Reply.deleted) {
-        2 {Write-Error "Password can't be retrieved as it had been explicitly deleted"}
-        1 {Write-Error "Password can't be retrieved as it had expired already"}
-        Default {
-            if ($Reply.payload -match "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$") {
-                Write-Error "The password retrieved is Base64-encoded/encrypted, so you're probably using an old build of pwpusher.`n" `
-                + "Please update from https://github.com/pglombardo/PasswordPusher`n" `
-                + "In the meantime you can use Get-PasswordWeb function"
-            } else {
-                if ($Kill.IsPresent) {
-                    Unpublish-Password -Uri $Uri
-                }
-                return (ConvertTo-SecureString $Reply.payload -AsPlainText -Force)    
-            }
+    # Parse the response if received - is the password deleted, expired or retrieved successfully
+    if ($Reply.Content -match "<p>\nThis secret link was manually expired by one of its viewers and the password has been deleted from the PasswordPusher database.\n</p>") {
+        Write-Error "Password can't be retrieved as it had been explicitly deleted"
+    } elseif ($Reply.Content -match "<div class='payload'>\nThis secret link has expired.\n</div>") {
+        Write-Error "Password can't be retrieved as it had expired already"
+    } elseif ($Reply.Content -match "(?:\<div class\=\'payload spoiler\' id\=\'pass\'\>)(.+)(?:\<\/div\>)") {
+        # Delete the password from database if requested
+        if ($Kill.IsPresent) {
+            Unpublish-Password -Uri $Uri
         }
+        return (ConvertTo-SecureString $Matches[1] -AsPlainText -Force)
+    } else {
+        Write-Error "Unable to retrieve the password"
     }
 }
 
-New-Alias gpwd Get-Password
+New-Alias gpwdweb Get-PasswordWeb
