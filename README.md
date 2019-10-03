@@ -7,6 +7,7 @@ Generates random password with multiple configuration options. Currently not usi
 
 ## Publish-Password
 Pushes the generated (or any other) to https://pwpush.com or a privately hosted instance.
+Was named Push-Password before. Renamed to match PowerShell verb convention.
 
 ## Get-Password
 Retieves the password using the link in https://pwpush.com/p/asdfghjkrwqwd format.
@@ -15,3 +16,9 @@ Currently a stub function, as the API retrieves payload in Base64-encoded encryp
 ## Unpublish-Password
 Deletes the password from the server using the link in https://pwpush.com/p/asdfghjkrwqwd format.
 Current build of pwpusher returns HTTP/500 on successful `DELETE` operation, the function captures and mentions that in the output.
+
+## To-Do
+- [X] Get-Password function to retrieve the password from the server. Implemented as stub function until the reply from service includes decryted password
+- [ ] Add secondary password retrieve method (over generic web request) to work around encryption in REST response.
+- [X] Unpublish-Password function to forcibly remove the password from the server (if allowed by deleteable_by_user)
+- [ ] Add $Server/URL validation to make sure it's in proper format and can be reached over port 443/80 based on protocol prefix if supplied or other explicit port
