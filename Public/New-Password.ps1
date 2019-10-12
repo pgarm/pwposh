@@ -12,19 +12,31 @@ function New-Password {
     after allowing for the lowercase, the length would be dynamically expanded.
     .PARAMETER Length
     Length of password required. 8 characters by default.
-    Also can be aliased as -l
+    Also can be aliased as -n
     .PARAMETER Capitals
     Minimum number of capital Latin letters in the resulting password. By default 1/4 of total length.
+    Setting to 0 will ensure no capital letters are used in password generation.
     Can be aliased as -c
     .PARAMETER Digits
     Minimum number of digits 0-9 in the resulting password. By default 1/6 of total length.
+    Setting to 0 will ensure no numeric characters are used in password generation.
     Can be aliased as -d
     .PARAMETER Symbols
     Minimum number of symbols in the resulting password. By default 1/8 of total length.
+    Setting to 0 will ensure no symbols are used in password generation.
     Can be aliased as -s
+    .PARAMETER Lowers
+    Minimum number of lowercase Laten letters in the resulting password. By default 1/2 of total length remaining after allocating caps, digits and symbols with a minimum of 1.
+    Setting to 0 will ensure no lowercase letters are used in password generation.
+    Can be aliased as -l
     .PARAMETER Simple
-    Sets complexity to off (generates an all-lowercase password).
+    Sets complexity to off (generates an all-lowercase password). A shortcut for
+        New-Password -Capitals 0 -Digits 0 -Symbols 0
     Can be aliased as -a
+    .PARAMETER Pin
+    Forces generation of an all-numeric PIN.A shortcut for
+        New-Password -Capitals 0 -Lowers 0 -Symbols 0
+    Can be aliased as -p
     .PARAMETER ExcludeHard
     Removes most ambiguous characters from available pool to make sure password is still legible even if written by hand on paper.
     Can be aliased as -h
@@ -50,20 +62,26 @@ function New-Password {
 
     [CmdletBinding(DefaultParameterSetName="Full")]
     param (
-        [Parameter(Position=0)][ValidateRange(4,64)][Alias("l")][int]$Length=8,
+        [Parameter(Position=0)][ValidateRange(4,64)][Alias("n")][int]$Length=8,
         [ValidateRange(2,6)][Alias("e")][decimal]$Entropy=3,
         [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
-            [Alias("c")][int]$Capitals=[System.Math]::Floor($Length/4),
+            [Alias("c")][int][ValidateRange("NonNegative")]$Capitals=[System.Math]::Floor($Length/4),
         [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
-            [Alias("d")][int]$Digits=[System.Math]::Floor($Length/6),
+            [Alias("d")][int][ValidateRange("NonNegative")]$Digits=[System.Math]::Floor($Length/6),
         [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
-            [Alias("s")][int]$Symbols=[System.Math]::Floor($Length/8),
+            [Alias("s")][int][ValidateRange("NonNegative")]$Symbols=[System.Math]::Floor($Length/8),
+        [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
+            [Alias("l")][int][ValidateRange("NonNegative")]$Lowers=[System.Math]::max(([System.Math]::Ceiling(($Length - ($Capitals + $Digits + $Symbols)) / 2)),1),
         [Parameter(ParameterSetName="Simple")][Alias("a")][switch]$Simple,
+        [Parameter(ParameterSetName="Pin")][Alias("p")][switch]$Pin,
         [Parameter(ParameterSetName="Hard")][Alias("Hard","h")][switch]$ExcludeHard,
         [Parameter(ParameterSetName="Soft")][Alias("Soft","o")][switch]$ExcludeSoft,
         [Parameter(ParameterSetName="Custom")][Alias("Exclude","x")][string]$ExcludeChars
     )
     
+    # If composition requested is 0 for all character sets, fail utterly (we can't possibly generate a password with no characters in it)
+    if (($Lowers + $Capitals + $Digits + $Symbols) -eq 0) {Write-Error "New-Password : Couldn't determine character composition with all 0s requested" -ErrorAction Stop}
+
     # If the requested Entropy is higher than theoretical maximum for length, reduce it to a resonable value
     if ($Entropy -gt [math]::Log($Length,2)) {
         $Entropy = [math]::Log($Length,2) * .95
@@ -80,14 +98,12 @@ function New-Password {
             $Capitals,$Digits,$Symbols = 0
             $Lowers = $Length
         }
+        "Pin" {
+            $Capitals,$Lowers,$Symbols = 0
+            $Digits = $Length
+        }
         Default {
-            if ($Length -le ($Capitals + $Digits + $Symbols)) {
-                $Lowers = 1; $Length = $Capitals + $Digits + $Symbols + $Lowers
-                Write-Host -ForegroundColor Yellow "Requested character composition exceeds requested password length, extending to acommodate"
-            } else {
-                $Lowers = [System.Math]::Ceiling(($Length - ($Capitals + $Digits + $Symbols)) / 2)
-                $WhiList = $DigList + $LowList + $CapList + $SymList
-            }
+            # Remove requested characters from available set
             switch ($psCmdlet.ParameterSetName) {
                 "Hard" {$SkipList = (("0OQDB86G&5S`$2?Z1lI!|/\-_```"'(){}[]<>.,:;%XuvUV9g ").ToCharArray() | ForEach-Object {[regex]::Escape($_)}) -join "|"}
                 "Soft" {$SkipList = (("0OB81lI|```"'.,:;").ToCharArray() | ForEach-Object {[regex]::Escape($_)}) -join "|"}
@@ -98,6 +114,17 @@ function New-Password {
             $LowList = $LowList -replace $SkipList,""
             $CapList = $CapList -replace $SkipList,""
             $SymList = $SymList -replace $SkipList,""
+            
+            # Establish password composition
+            if ($Length -lt ($Lowers + $Capitals + $Digits + $Symbols)) {
+                $Length = $Capitals + $Digits + $Symbols + $Lowers
+                Write-Host -ForegroundColor Yellow "Requested character composition exceeds requested password length, extending to acommodate"
+            } else {
+                if ($Lowers -gt 0) {$WhiList = $LowList}
+                if ($Digits -gt 0) {$WhiList += $DigList}
+                if ($Capitals -gt 0) {$WhiList += $CapList}
+                if ($Symbols -gt 0) {$WhiList += $SymList}
+            }
         }
     }
 
