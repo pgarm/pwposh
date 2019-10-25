@@ -11,23 +11,23 @@ function New-Password {
     There would always be at least one lowercase letter in the password, and if the requested composition of capitals + digits + symbols is longer than requested length
     after allowing for the lowercase, the length would be dynamically expanded.
     .PARAMETER Length
-    Length of password required. 8 characters by default.
+    Length of password required. 8 characters by default. Allowed range 4-64
     Also can be aliased as -n
     .PARAMETER Capitals
     Minimum number of capital Latin letters in the resulting password. By default 1/4 of total length.
-    Setting to 0 will ensure no capital letters are used in password generation.
+    Setting to 0 will ensure no capital letters are used in password generation. Allowed range 0-64
     Can be aliased as -c
     .PARAMETER Digits
     Minimum number of digits 0-9 in the resulting password. By default 1/6 of total length.
-    Setting to 0 will ensure no numeric characters are used in password generation.
+    Setting to 0 will ensure no numeric characters are used in password generation. Allowed range 0-64
     Can be aliased as -d
     .PARAMETER Symbols
     Minimum number of symbols in the resulting password. By default 1/8 of total length.
-    Setting to 0 will ensure no symbols are used in password generation.
+    Setting to 0 will ensure no symbols are used in password generation. Allowed range 0-64
     Can be aliased as -s
     .PARAMETER Lowers
     Minimum number of lowercase Laten letters in the resulting password. By default 1/2 of total length remaining after allocating caps, digits and symbols with a minimum of 1.
-    Setting to 0 will ensure no lowercase letters are used in password generation.
+    Setting to 0 will ensure no lowercase letters are used in password generation. Allowed range 0-64
     Can be aliased as -l
     .PARAMETER Simple
     Sets complexity to off (generates an all-lowercase password). A shortcut for
@@ -65,13 +65,13 @@ function New-Password {
         [Parameter(Position=0)][ValidateRange(4,64)][Alias("n")][int]$Length=8,
         [ValidateRange(2,6)][Alias("e")][decimal]$Entropy=3,
         [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
-            [Alias("c")][int][ValidateRange("NonNegative")]$Capitals=[System.Math]::Floor($Length/4),
+            [Alias("c")][int][ValidateRange(0,64)]$Capitals=[System.Math]::Floor($Length/4),
         [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
-            [Alias("d")][int][ValidateRange("NonNegative")]$Digits=[System.Math]::Floor($Length/6),
+            [Alias("d")][int][ValidateRange(0,64)]$Digits=[System.Math]::Floor($Length/6),
         [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
-            [Alias("s")][int][ValidateRange("NonNegative")]$Symbols=[System.Math]::Floor($Length/8),
+            [Alias("s")][int][ValidateRange(0,64)]$Symbols=[System.Math]::Floor($Length/8),
         [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
-            [Alias("l")][int][ValidateRange("NonNegative")]$Lowers=[System.Math]::max(([System.Math]::Ceiling(($Length - ($Capitals + $Digits + $Symbols)) / 2)),1),
+            [Alias("l")][int][ValidateRange(0,64)]$Lowers=[System.Math]::max(([System.Math]::Ceiling(($Length - ($Capitals + $Digits + $Symbols)) / 2)),1),
         [Parameter(ParameterSetName="Simple")][Alias("a")][switch]$Simple,
         [Parameter(ParameterSetName="Pin")][Alias("p")][switch]$Pin,
         [Parameter(ParameterSetName="Hard")][Alias("Hard","h")][switch]$ExcludeHard,
