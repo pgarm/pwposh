@@ -12,7 +12,7 @@
 RootModule = 'PwPoSh.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.1.572'
+ModuleVersion = '0.1.598'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()

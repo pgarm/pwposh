@@ -38,7 +38,7 @@ function Get-Password {
         Default {
             if ($Reply.payload -match "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$") {
                 Write-Error "The password retrieved is Base64-encoded/encrypted, so you're probably using an old build of pwpusher.`n" `
-                + "Please update from https://github.com/pglombardo/PasswordPusher`n" `
+                + "Please update from https://github.com/pglombardo/PasswordPusher to a build incorporating pull request #113`n" `
                 + "In the meantime you can use Get-PasswordWeb function"
             } else {
                 if ($Kill.IsPresent) {

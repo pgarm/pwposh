@@ -11,15 +11,15 @@ Was named Push-Password before. Renamed to match PowerShell verb convention.
 
 ## Get-Password
 Retieves the password using the link in https://pwpush.com/p/asdfghjkrwqwd format.
-Currently a stub function, as the API retrieves payload in Base64-encoded encrypted form.
 
 ## Unpublish-Password
 Deletes the password from the server using the link in https://pwpush.com/p/asdfghjkrwqwd format.
-Current build of pwpusher returns HTTP/500 on successful `DELETE` operation, the function captures and mentions that in the output.
+Older build of pwpusher return HTTP/500 on successful `DELETE` operation, the function captures and mentions that in the output.
+Newer builds properly respond with HTTP/200.
 
 ## Get-PasswordWeb
-A function to work around current limitation of pwpusher on password retrieval via REST - will send a generic web request and parse it.
-Will be deprecated as pwpusher is updated for REST to work properly.
+A function to work around limitation of older pwpusher builds on password retrieval via REST - will send a generic web request and parse it.
+Deprecated as pwpusher is updated for REST to work properly.
 
 ## To-Do
 - [X] Get-Password function to retrieve the password from the server. Implemented as stub function until the reply from service includes decryted password

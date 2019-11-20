@@ -1,8 +1,9 @@
 function Get-PasswordWeb {
     <#
     .SYNOPSIS
-    Pulls the password from public pwpush.com or a private instance of Password Pusher by using a full link or a combination of server and password.
-    Uses generic HTTP web request fo rcompatibility with older builds of pwpusher
+    DEPRECATED as the PasswordPusher had been updated to properly return password over API.
+    Pulls the password from public pwpush.com or a private instance of Password Pusher by using a full link.
+    Uses generic HTTP web request for compatibility with older builds of pwpusher
     .DESCRIPTION
     This complements Peter Giacomo Lombardo's genius idea of sending a temporary link to password instead of plaintext (https://github.com/pglombardo/PasswordPusher).
     By default will work against publicly hosted instance at https://pwpush.com, but can use your privately hosted instance by specifying the target as script parameter.

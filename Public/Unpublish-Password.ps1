@@ -24,8 +24,8 @@ function Unpublish-Password {
     # Kill the password
     try {
         $Reply = Invoke-RestMethod -Method 'Delete' -Uri "$Uri.json"
-        # There's a bug currently in the API that returns DELETE result as HTTP/500, generating an error - we catch that in the next block
-        # When it's fixed, the next line would eval deletion
+        # There's a bug currently in the older builds of API that returns DELETE result as HTTP/500, generating an error - we catch that in the next block
+        # WIn the newer builds, the next line would eval deletion
         if ($Reply.deleted) {Write-Host "Unpublished the password successfully from $Uri (or it had been deleted already)"}
     } catch {
         if ($_.Exception -notmatch '500') {
@@ -33,7 +33,8 @@ function Unpublish-Password {
         } elseif ((ConvertFrom-Json $_.ErrorDetails).deleted) {
             # Catching the HTTP/500 response
             Write-Host "Unpublished the password successfully from $Uri (or it had been deleted already)"
-            Write-Host -ForegroundColor Yellow "You seem to be using an outdated version of pwpusher that returns successful deletion as HTTP/500 error.`nPlease update from https://github.com/pglombardo/PasswordPusher"
+            Write-Host -ForegroundColor Yellow "You seem to be using an outdated version of pwpusher that returns successful deletion as HTTP/500 error.`n" +`
+                                               "Please update from https://github.com/pglombardo/PasswordPusher to a build incorporating pull request #115"
         }
     }
 }

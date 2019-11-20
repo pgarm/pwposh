@@ -68,16 +68,21 @@ function Publish-Password {
             payload = ConvertFrom-SecurePassword $Password
             expire_after_days = $Days
             expire_after_views = $Views
-            deletable_by_viewer = $KillSwitch.IsPresent.ToString().ToLower()
+            #deletable_by_viewer = $KillSwitch.IsPresent.ToString().ToLower()
             first_view = $FirstView.IsPresent.ToString().ToLower()
-            # first_view option is currently ignored by API, always returning True - hence the emulation piece below
+            # first_view option is ignored by API in older builds, always returning True - hence the emulation piece below
+            # fixed in public instance at https://pwpusher.com but may still be seen with private instances until they're updated
         }
     } | ConvertTo-Json)
 
     if ($Reply.url_token) {
-        # Emulating the first_view = false; can be removed when the API starts handling it properly
+        # Emulating the first_view = false; Current builds of pwpusher handle the switch properly, but for older ones we'll keep the emulation in place and throw a warning
         # Triggered if returned first_view is True and requested is False (only case where boolean can be greater than)
-        if ($Reply.first_view -gt $FirstView.IsPresent) {Invoke-RestMethod -Method 'Get' -Uri "https://$Server/p/$($Reply.url_token).json" | Out-Null}
+        if ($Reply.first_view -gt $FirstView.IsPresent) {
+            Invoke-RestMethod -Method 'Get' -Uri "https://$Server/p/$($Reply.url_token).json" | Out-Null
+            Write-Host -ForegroundColor Yellow "The version of PasswordPusher you're using is outdated and doesn't properly support FirstView switch`n" +`
+                                               "Please update to a build that includes pull request #112"
+        }
         return "https://$Server/p/$($Reply.url_token)"
     } else {
         Write-Error "Unable to get URL from service"
