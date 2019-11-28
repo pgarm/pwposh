@@ -64,16 +64,31 @@ function Publish-Password {
 
     # Push the password, retrieve the response. Building the body on-the-fly to keep unsecured password not stored in a variable
     $Reply = Invoke-RestMethod -Method 'Post' -Uri "https://$Server/p.json" -ContentType "application/json" -Body ([pscustomobject]@{
-        password = [pscustomobject]@{
-            payload = ConvertFrom-SecurePassword $Password
-            expire_after_days = $Days
-            expire_after_views = $Views
-            #deletable_by_viewer = $KillSwitch.IsPresent.ToString().ToLower()
-            first_view = $FirstView.IsPresent.ToString().ToLower()
-            # first_view option is ignored by API in older builds, always returning True - hence the emulation piece below
-            # fixed in public instance at https://pwpusher.com but may still be seen with private instances until they're updated
+        password = if ($KillSwitch) {[pscustomobject]@{
+                payload = ConvertFrom-SecurePassword $Password
+                expire_after_days = $Days
+                expire_after_views = $Views
+                deletable_by_viewer = $KillSwitch.IsPresent.ToString().ToLower()
+                # the line above doesn't work correctly with current builds of PasswordPusher, setting the deletable flag to true when any value is present
+                # We'll fix this below by using a conditional hashtable build, omitting the attribute when not requested
+                first_view = $FirstView.IsPresent.ToString().ToLower()
+                # first_view option is ignored by API in older builds, always returning True - hence the emulation piece below
+                # fixed in public instance at https://pwpusher.com but may still be seen with private instances until they're updated
+           }
+        } else {
+            [pscustomobject]@{
+                payload = ConvertFrom-SecurePassword $Password
+                expire_after_days = $Days
+                expire_after_views = $Views
+                #deletable_by_viewer = $KillSwitch.IsPresent.ToString().ToLower()
+                # the line above would send 'false' and the whole if-else section can be removed when the API is updated
+                first_view = $FirstView.IsPresent.ToString().ToLower()
+                # first_view option is ignored by API in older builds, always returning True - hence the emulation piece below
+                # fixed in public instance at https://pwpusher.com but may still be seen with private instances until they're updated
+            }
         }
     } | ConvertTo-Json)
+    $Password.Dispose()
 
     if ($Reply.url_token) {
         # Emulating the first_view = false; Current builds of pwpusher handle the switch properly, but for older ones we'll keep the emulation in place and throw a warning
