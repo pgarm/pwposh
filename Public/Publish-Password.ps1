@@ -34,6 +34,9 @@ function Publish-Password {
     Due to a current bug/deficiency in pwpush the API ignores the switch if supplied in the REST call and the option is always on.
     So, for the time being, it's emulated by using HTTP GET against the URL if the switch is not specified in the command.
     Can be aliased as -f
+    .PARAMETER Wipe
+    Wipe the password object from memory using Dispose() method after successful publishing, False by default
+    Can be aliased as -k
     .EXAMPLE 
     $SecurePass | Publish-Password
 
@@ -53,7 +56,8 @@ function Publish-Password {
         [Alias("v")][int]$Views=5,
         [Alias("s")][string]$Server="pwpush.com",
         [Alias("k")][switch]$KillSwitch,
-        [Alias("f")][switch]$FirstView
+        [Alias("f")][switch]$FirstView,
+        [Alias("w")][switch]$Wipe
     )
 
     # If the password is supplied as anything but SecureString, throw a warning and force-convert it
@@ -81,14 +85,13 @@ function Publish-Password {
                 expire_after_days = $Days
                 expire_after_views = $Views
                 #deletable_by_viewer = $KillSwitch.IsPresent.ToString().ToLower()
-                # the line above would send 'false' and the whole if-else section can be removed when the API is updated
+                # the line above would send 'false' and the whole if-else section can be removed when the API is updated, keeping only the first codeblock
                 first_view = $FirstView.IsPresent.ToString().ToLower()
                 # first_view option is ignored by API in older builds, always returning True - hence the emulation piece below
                 # fixed in public instance at https://pwpusher.com but may still be seen with private instances until they're updated
             }
         }
     } | ConvertTo-Json)
-    $Password.Dispose()
 
     if ($Reply.url_token) {
         # Emulating the first_view = false; Current builds of pwpusher handle the switch properly, but for older ones we'll keep the emulation in place and throw a warning
@@ -98,6 +101,8 @@ function Publish-Password {
             Write-Host -ForegroundColor Yellow "The version of PasswordPusher you're using is outdated and doesn't properly support FirstView switch`n" +`
                                                "Please update to a build that includes pull request #112"
         }
+        # Dispose of secure password object - note it's the original object, not a function-local copy
+        if ($Wipe) {$Password.Dispose()}
         return "https://$Server/p/$($Reply.url_token)"
     } else {
         Write-Error "Unable to get URL from service"
