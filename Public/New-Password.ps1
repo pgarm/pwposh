@@ -149,7 +149,23 @@ function New-Password {
                 Default {$SecPwd.AppendChar(($WhiList.ToCharArray() | Get-Random)); $WorkSet.Length += -1; break}
             }
         }
-    } while (([System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecPwd)) | Get-StringEntropy) -lt $Entropy)
+
+        $SecPwdString = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecPwd))
+
+        if ($SecPwdString.Length -ne $SecPwd.Length) {
+            # Workaround for incorrectly working Marshal.PtrToStringAuto method in .Net Core
+            # if you don't specify Len in 'public static string PtrToStringAuto (IntPtr ptr, int len)' only 1 character is returned
+            $PwdAllocationLength = $SecPwd.Length
+            do {
+                $SecPwdString = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecPwd), $PwdAllocationLength)
+                $SecPwdString = $SecPwdString -replace "$([char]0)"
+                $PwdAllocationLength ++
+            } until ($SecPwdString.Length -eq $SecPwd.Length)
+        }  
+
+        # Verify the string entropy
+        $ResultingEntropy = ($SecPwdString | Get-StringEntropy)
+    } while ($ResultingEntropy -lt $Entropy)
 
     return $SecPwd
 }
