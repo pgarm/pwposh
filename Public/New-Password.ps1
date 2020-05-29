@@ -91,7 +91,7 @@ function New-Password {
     $DigList = "0123456789"
     $LowList = "abcdefghijklmnopqrstuvwxyz"
     $CapList = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    $SymList = "!`"#$%&'()*+,-./:;<=>?@[\]^_``{|}~ "
+    $SymList = "!`"#$%&'()*+,-./:;<=>?@[\]^_{|}~ "
     
     switch ($psCmdlet.ParameterSetName) {
         "Simple" {
@@ -149,7 +149,7 @@ function New-Password {
                 Default {$SecPwd.AppendChar(($WhiList.ToCharArray() | Get-Random)); $WorkSet.Length += -1; break}
             }
         }
-    } while (([System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecPwd)) | Get-StringEntropy) -lt $Entropy)
+    } while (([System.Runtime.InteropServices.Marshal]::PtrToStringUni([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecPwd)) | Get-StringEntropy) -lt $Entropy)
 
     return $SecPwd
 }
