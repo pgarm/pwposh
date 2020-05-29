@@ -105,7 +105,7 @@ function New-Password {
         Default {
             # Remove requested characters from available set
             switch ($psCmdlet.ParameterSetName) {
-                "Hard" {$SkipList = (("0OQDB86G&5S`$2?Z1lI!|/\-_```"'(){}[]<>.,:;%XuvUV9g ").ToCharArray() | ForEach-Object {[regex]::Escape($_)}) -join "|"}
+                "Hard" {$SkipList = (("0OQDB86G&5S`$2?Z1lI!|/\-_`"'(){}[]<>.,:;%XuvUV9g ").ToCharArray() | ForEach-Object {[regex]::Escape($_)}) -join "|"}
                 "Soft" {$SkipList = (("0OB81lI|```"'.,:;").ToCharArray() | ForEach-Object {[regex]::Escape($_)}) -join "|"}
                 "Custom" {$SkipList = ($ExcludeChars.ToCharArray() | ForEach-Object {[regex]::Escape($_)}) -join "|"}
                 Default {$SkipList = ""}
