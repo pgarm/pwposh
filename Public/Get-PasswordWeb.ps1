@@ -15,37 +15,41 @@ function Get-PasswordWeb {
     .PARAMETER Kill
     Delete the password from database (if allowed by pusher originally), False by default
     Can be aliased as -k
-    .EXAMPLE 
+    .EXAMPLE
     $pwdlink | Get-PasswordWeb
 
     Pulls the password from the specified link.
     #>
 
     param (
-        [Parameter(Position=0,Mandatory=$true,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)][Alias("l")]
-            [ValidatePattern("^(http[s]?)(?:\:\/\/)([\w_-]+(?:(?:\.[\w_-]+)+))(?:\/p\/)([\w]+)")]$Uri,
+        [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)][Alias("l")]
+        [ValidatePattern("^(http[s]?)(?:\:\/\/)([\w_-]+(?:(?:\.[\w_-]+)+))(?:\/p\/)([\w]+)")]$Uri,
         [Alias("k")][switch]$Kill
     )
 
     # Pull the password
     try {
         $Reply = Invoke-WebRequest -Uri $Uri
-    } catch {
+    }
+    catch {
         Write-Error "Unable to get the response from service"
     }
 
     # Parse the response if received - is the password deleted, expired or retrieved successfully
     if ($Reply.Content -match "<p>\nThis secret link was manually expired by one of its viewers and the password has been deleted from the PasswordPusher database.\n</p>") {
         Write-Error "Password can't be retrieved as it had been explicitly deleted"
-    } elseif ($Reply.Content -match "<div class='payload'>\nThis secret link has expired.\n</div>") {
+    }
+    elseif ($Reply.Content -match "<div class='payload'>\nThis secret link has expired.\n</div>") {
         Write-Error "Password can't be retrieved as it had expired already"
-    } elseif ($Reply.Content -match "(?:\<div class\=\'payload spoiler\' id\=\'pass\'\>)(.+)(?:\<\/div\>)") {
+    }
+    elseif ($Reply.Content -match "(?:\<div class\=\'payload spoiler\' id\=\'pass\'\>)(.+)(?:\<\/div\>)") {
         # Delete the password from database if requested
         if ($Kill.IsPresent) {
             Unpublish-Password -Uri $Uri
         }
         return (ConvertTo-SecureString $Matches[1] -AsPlainText -Force)
-    } else {
+    }
+    else {
         Write-Error "Unable to retrieve the password"
     }
 }
