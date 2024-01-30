@@ -26,7 +26,7 @@ function Publish-Password {
     Specifies server/service to use in FQDN format, assumes https:// protocol prefix and default port 443.
     Defaults to public pwpush.com
     Can be aliased as -s
-    .PARAMETER KillSwitch
+    .PARAMETER DeletableByViewer
     Allows anyone accessing the link to delete it before it expires, False by default
     Can be aliased as -k
     .PARAMETER FirstView
@@ -53,59 +53,78 @@ function Publish-Password {
         # To mitigate this but still allow for flexibility in custom scripts we force-convert it at the start.
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true)][Alias("p")]$Password,
         [Alias("d")][int]$Days = 7,
-        [Alias("v")][int]$Views = 5,
+        [Alias("v")][int]$Views = 1,
         [Alias("s")][string]$Server = "pwpush.com",
-        [Alias("k")][switch]$KillSwitch,
-        [Alias("f")][switch]$FirstView,
-        [Alias("w")][switch]$Wipe
+        [SecureString] $Passphrase = $null,
+        [Alias("k", "KillSwitch")][switch]$DeletableByViewer,
+        [Alias("f", "FirstView")][switch] $RetrievalStep,
+        [Alias("w")][switch]$Wipe,
+        [PSCredential] $Creds
     )
 
     # If the password is supplied as anything but SecureString, throw a warning and force-convert it
     if ($Password -isnot [securestring]) {
         Write-Host -ForegroundColor Yellow "You should use SecureString type to process passwords in scripts. Converting now..."
-        [securestring]$Password = ConvertTo-SecureString ([string]$Password) -AsPlainText -Force
+        [securestring] $Password = ConvertTo-SecureString ([string]$Password) -AsPlainText -Force
     }
 
-    # Push the password, retrieve the response. Building the body on-the-fly to keep unsecured password not stored in a variable
-    $Reply = Invoke-RestMethod -Method 'Post' -Uri "https://$Server/p.json" -ContentType "application/json" -Body ([pscustomobject]@{
-            password = if ($KillSwitch) {
-                [pscustomobject]@{
-                    payload             = ConvertFrom-SecurePassword $Password
-                    expire_after_days   = $Days
-                    expire_after_views  = $Views
-                    deletable_by_viewer = $KillSwitch.IsPresent.ToString().ToLower()
-                    # the line above doesn't work correctly with current builds of PasswordPusher, setting the deletable flag to true when any value is present
-                    # We'll fix this below by using a conditional hashtable build, omitting the attribute when not requested
-                    first_view          = $FirstView.IsPresent.ToString().ToLower()
-                    # first_view option is ignored by API in older builds, always returning True - hence the emulation piece below
-                    # fixed in public instance at https://pwpusher.com but may still be seen with private instances until they're updated
-                }
-            }
-            else {
-                [pscustomobject]@{
-                    payload            = ConvertFrom-SecurePassword $Password
-                    expire_after_days  = $Days
-                    expire_after_views = $Views
-                    #deletable_by_viewer = $KillSwitch.IsPresent.ToString().ToLower()
-                    # the line above would send 'false' and the whole if-else section can be removed when the API is updated, keeping only the first codeblock
-                    first_view         = $FirstView.IsPresent.ToString().ToLower()
-                    # first_view option is ignored by API in older builds, always returning True - hence the emulation piece below
-                    # fixed in public instance at https://pwpusher.com but may still be seen with private instances until they're updated
-                }
-            }
-        } | ConvertTo-Json)
-
-    if ($Reply.url_token) {
+    # Push the password, retrieve the response
+    $Body = [Ordered] @{
+        "password[payload]"            = ConvertFrom-SecurePassword $Password
+        "password[expire_after_days]"  = $Days
+        "password[expire_after_views]" = $Views
+    }
+    If ($DeletableByViewer) {
+        $Body.Add('password[deletable_by_viewer]', "1")
+    }
+    If ($RetrievalStep) {
+        $Body.Add('password[retrieval_step]', "1")
+    }
+    If ($Passphrase) {
+        $Body.Add('password[passphrase]', (ConvertFrom-SecurePassword $Passphrase))
+    }
+    $Headers = @{}
+    If ($Creds) {
+        $Headers.Add('X-User-Email', $Creds.UserName)
+        $Headers.Add('X-User-Token', $Creds.GetNetworkCredential().Password)
+    }
+    #$Body
+    Try {
+        $IwrParams = @{
+            Method          = "POST"
+            URI             = "https://$Server/p.json"
+            #ContentType = 'application/x-www-form-urlencoded'
+            ContentType     = 'application/x-www-form-urlencoded;charset=UTF-8'
+            Headers         = $Headers
+            Body            = $Body
+            UseBasicParsing = $true
+        }
+        If ($Env:HTTP_PROXY -or $Env:HTTPS_PROXY) {
+            $IwrParams.Add('Proxy', $(If ($Env:HTTPS_PROXY) { $ENV:HTTPS_PROXY } else { $ENV:ALLUSERSPROFILE }))
+        }
+        $IwrParams
+        $IwrParams.Body
+        $Reply = Invoke-WebRequest @IwrParams
+    }
+    Catch {
+        $LastError = $Error[0]
+        Write-Error ("An error occured: " + $LastError)
+        return $null
+    }
+    $url_token = $Reply.Content | ConvertFrom-Json | Select-Object -ExpandProperty url_token
+    if ($url_token) {
         # Emulating the first_view = false; Current builds of pwpusher handle the switch properly, but for older ones we'll keep the emulation in place and throw a warning
         # Triggered if returned first_view is True and requested is False (only case where boolean can be greater than)
+        <#
         if ($Reply.first_view -gt $FirstView.IsPresent) {
             Invoke-RestMethod -Method 'Get' -Uri "https://$Server/p/$($Reply.url_token).json" | Out-Null
             Write-Host -ForegroundColor Yellow "The version of PasswordPusher you're using is outdated and doesn't properly support FirstView switch`n" +`
             "Please update to a build that includes pull request #112"
         }
+        #>
         # Dispose of secure password object - note it's the original object, not a function-local copy
         if ($Wipe) { $Password.Dispose() }
-        return "https://$Server/p/$($Reply.url_token)"
+        return "https://$Server/p/$($url_token)"
     }
     else {
         Write-Error "Unable to get URL from service"
