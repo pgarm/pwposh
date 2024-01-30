@@ -104,8 +104,6 @@ function Publish-Password {
         If ($Env:HTTP_PROXY -or $Env:HTTPS_PROXY) {
             $IwrParams.Add('Proxy', $(If ($Env:HTTPS_PROXY) { $ENV:HTTPS_PROXY } else { $ENV:ALLUSERSPROFILE }))
         }
-        $IwrParams
-        $IwrParams.Body
         $Reply = Invoke-WebRequest @IwrParams
     }
     Catch {
