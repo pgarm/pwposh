@@ -56,6 +56,8 @@ function Publish-Password {
         [Alias("v")][int]$Views = 1,
         [Alias("s")][string]$Server = "pwpush.com",
         [SecureString] $Passphrase = $null,
+        [ValidateSet("ca","cs","da","de","en","es","eu","fi","fr","hi","hu","id","is","it","ja","ko","lv","nl","no","pl","pt-br","pt-pt","ro","ru","sr","sv","th","uk","ur","zh-cn")]
+        [String] $Language,
         [Alias("k", "KillSwitch")][switch]$DeletableByViewer,
         [Alias("f", "FirstView")][switch] $RetrievalStep,
         [Alias("w")][switch]$Wipe,
@@ -124,11 +126,15 @@ function Publish-Password {
         #>
         # Dispose of secure password object - note it's the original object, not a function-local copy
         if ($Wipe) { $Password.Dispose() }
-        return "https://$Server/p/$($url_token)"
+        If ($Language) {
+            return "https://$Server/$Language/p/$($url_token)"
+        } Else {
+            return "https://$Server/p/$($url_token)"
+        }
     }
     else {
         Write-Error "Unable to get URL from service"
     }
 }
 
-New-Alias pbpwd Publish-Password
+If (-not (Get-Alias pbpwd -ErrorAction SilentlyContinue)) { New-Alias pbpwd Publish-Password }
