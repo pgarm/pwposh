@@ -50,7 +50,7 @@ function New-Password {
     .PARAMETER Entropy
     Specifies minimum entropy value. Would be reduced in processing if set above the thoretical maximum. Default value is 3 (max for 8-character string)
     Can be aliased as -e
-    .EXAMPLE 
+    .EXAMPLE
     New-Password
 
     Generates a random password 8 characters long with full printable charset.
@@ -60,31 +60,31 @@ function New-Password {
     Generates a 16-character lowercase password.
     #>
 
-    [CmdletBinding(DefaultParameterSetName="Full")]
+    [CmdletBinding(DefaultParameterSetName = "Full")]
     param (
-        [Parameter(Position=0)][ValidateRange(4,64)][Alias("n")][int]$Length=8,
-        [ValidateRange(2,6)][Alias("e")][decimal]$Entropy=3,
-        [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
-            [Alias("c")][int][ValidateRange(0,64)]$Capitals=[System.Math]::Floor($Length/4),
-        [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
-            [Alias("d")][int][ValidateRange(0,64)]$Digits=[System.Math]::Floor($Length/6),
-        [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
-            [Alias("s")][int][ValidateRange(0,64)]$Symbols=[System.Math]::Floor($Length/8),
-        [Parameter(ParameterSetName="Hard")][Parameter(ParameterSetName="Soft")][Parameter(ParameterSetName="Full")][Parameter(ParameterSetName="Custom")]
-            [Alias("l")][int][ValidateRange(0,64)]$Lowers=[System.Math]::max(([System.Math]::Ceiling(($Length - ($Capitals + $Digits + $Symbols)) / 2)),1),
-        [Parameter(ParameterSetName="Simple")][Alias("a")][switch]$Simple,
-        [Parameter(ParameterSetName="Pin")][Alias("p")][switch]$Pin,
-        [Parameter(ParameterSetName="Hard")][Alias("Hard","h")][switch]$ExcludeHard,
-        [Parameter(ParameterSetName="Soft")][Alias("Soft","o")][switch]$ExcludeSoft,
-        [Parameter(ParameterSetName="Custom")][Alias("Exclude","x")][string]$ExcludeChars
+        [Parameter(Position = 0)][ValidateRange(4, 64)][Alias("n")][int]$Length = 8,
+        [ValidateRange(2, 6)][Alias("e")][decimal]$Entropy = 3,
+        [Parameter(ParameterSetName = "Hard")][Parameter(ParameterSetName = "Soft")][Parameter(ParameterSetName = "Full")][Parameter(ParameterSetName = "Custom")]
+        [Alias("c")][int][ValidateRange(0, 64)]$Capitals = [System.Math]::Floor($Length / 4),
+        [Parameter(ParameterSetName = "Hard")][Parameter(ParameterSetName = "Soft")][Parameter(ParameterSetName = "Full")][Parameter(ParameterSetName = "Custom")]
+        [Alias("d")][int][ValidateRange(0, 64)]$Digits = [System.Math]::Floor($Length / 6),
+        [Parameter(ParameterSetName = "Hard")][Parameter(ParameterSetName = "Soft")][Parameter(ParameterSetName = "Full")][Parameter(ParameterSetName = "Custom")]
+        [Alias("s")][int][ValidateRange(0, 64)]$Symbols = [System.Math]::Floor($Length / 8),
+        [Parameter(ParameterSetName = "Hard")][Parameter(ParameterSetName = "Soft")][Parameter(ParameterSetName = "Full")][Parameter(ParameterSetName = "Custom")]
+        [Alias("l")][int][ValidateRange(0, 64)]$Lowers = [System.Math]::max(([System.Math]::Ceiling(($Length - ($Capitals + $Digits + $Symbols)) / 2)), 1),
+        [Parameter(ParameterSetName = "Simple")][Alias("a")][switch]$Simple,
+        [Parameter(ParameterSetName = "Pin")][Alias("p")][switch]$Pin,
+        [Parameter(ParameterSetName = "Hard")][Alias("Hard", "h")][switch]$ExcludeHard,
+        [Parameter(ParameterSetName = "Soft")][Alias("Soft", "o")][switch]$ExcludeSoft,
+        [Parameter(ParameterSetName = "Custom")][Alias("Exclude", "x")][string]$ExcludeChars
     )
-    
+
     # If composition requested is 0 for all character sets, fail utterly (we can't possibly generate a password with no characters in it)
-    if (($Lowers + $Capitals + $Digits + $Symbols) -eq 0) {Write-Error "New-Password : Couldn't determine character composition with all 0s requested" -ErrorAction Stop}
+    if (($Lowers + $Capitals + $Digits + $Symbols) -eq 0) { Write-Error "New-Password : Couldn't determine character composition with all 0s requested" -ErrorAction Stop }
 
     # If the requested Entropy is higher than theoretical maximum for length, reduce it to a resonable value
-    if ($Entropy -gt [math]::Log($Length,2)) {
-        $Entropy = [math]::Log($Length,2) * .95
+    if ($Entropy -gt [math]::Log($Length, 2)) {
+        $Entropy = [math]::Log($Length, 2) * .95
         Write-Host "Requested entropy was too high, reducing to $Entropy"
     }
 
@@ -92,38 +92,39 @@ function New-Password {
     $LowList = "abcdefghijklmnopqrstuvwxyz"
     $CapList = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     $SymList = "!`"#$%&'()*+,-./:;<=>?@[\]^_{|}~ "
-    
+
     switch ($psCmdlet.ParameterSetName) {
         "Simple" {
-            $Capitals,$Digits,$Symbols = 0
+            $Capitals, $Digits, $Symbols = 0
             $Lowers = $Length
         }
         "Pin" {
-            $Capitals,$Lowers,$Symbols = 0
+            $Capitals, $Lowers, $Symbols = 0
             $Digits = $Length
         }
         Default {
             # Remove requested characters from available set
             switch ($psCmdlet.ParameterSetName) {
-                "Hard" {$SkipList = (("0OQDB86G&5S`$2?Z1lI!|/\-_`"'(){}[]<>.,:;%XuvUV9g ").ToCharArray() | ForEach-Object {[regex]::Escape($_)}) -join "|"}
-                "Soft" {$SkipList = (("0OB81lI|```"'.,:;").ToCharArray() | ForEach-Object {[regex]::Escape($_)}) -join "|"}
-                "Custom" {$SkipList = ($ExcludeChars.ToCharArray() | ForEach-Object {[regex]::Escape($_)}) -join "|"}
-                Default {$SkipList = ""}
+                "Hard" { $SkipList = (("0OQDB86G&5S`$2?Z1lI!|/\-_`"'(){}[]<>.,:;%XuvUV9g ").ToCharArray() | ForEach-Object { [regex]::Escape($_) }) -join "|" }
+                "Soft" { $SkipList = (("0OB81lI|```"'.,:;").ToCharArray() | ForEach-Object { [regex]::Escape($_) }) -join "|" }
+                "Custom" { $SkipList = ($ExcludeChars.ToCharArray() | ForEach-Object { [regex]::Escape($_) }) -join "|" }
+                Default { $SkipList = "" }
             }
-            $DigList = $DigList -replace $SkipList,""
-            $LowList = $LowList -replace $SkipList,""
-            $CapList = $CapList -replace $SkipList,""
-            $SymList = $SymList -replace $SkipList,""
-            
+            $DigList = $DigList -replace $SkipList, ""
+            $LowList = $LowList -replace $SkipList, ""
+            $CapList = $CapList -replace $SkipList, ""
+            $SymList = $SymList -replace $SkipList, ""
+
             # Establish password composition
             if ($Length -lt ($Lowers + $Capitals + $Digits + $Symbols)) {
                 $Length = $Capitals + $Digits + $Symbols + $Lowers
                 Write-Host -ForegroundColor Yellow "Requested character composition exceeds requested password length, extending to acommodate"
-            } else {
-                if ($Lowers -gt 0) {$WhiList = $LowList}
-                if ($Digits -gt 0) {$WhiList += $DigList}
-                if ($Capitals -gt 0) {$WhiList += $CapList}
-                if ($Symbols -gt 0) {$WhiList += $SymList}
+            }
+            else {
+                if ($Lowers -gt 0) { $WhiList = $LowList }
+                if ($Digits -gt 0) { $WhiList += $DigList }
+                if ($Capitals -gt 0) { $WhiList += $CapList }
+                if ($Symbols -gt 0) { $WhiList += $SymList }
             }
         }
     }
@@ -132,21 +133,21 @@ function New-Password {
     do {
         # Set disposable counters so that re-run is easy to do
         $WorkSet = [pscustomobject]@{
-            Length = $Length
-            Lowers = $Lowers
+            Length   = $Length
+            Lowers   = $Lowers
             Capitals = $Capitals
-            Digits = $Digits
-            Symbols = $Symbols
+            Digits   = $Digits
+            Symbols  = $Symbols
         }
 
         $SecPwd = New-Object -TypeName securestring
         ($WorkSet.Length)..1 | ForEach-Object {
             switch (Get-Random ($_)) {
-                {$_ -lt ($WorkSet.Lowers)} {$SecPwd.AppendChar(($LowList.ToCharArray() | Get-Random)); $WorkSet.Lowers += -1; $WorkSet.Length += -1; break}
-                {$_ -lt ($WorkSet.Lowers + $WorkSet.Capitals)} {$SecPwd.AppendChar(($CapList.ToCharArray() | Get-Random)); $WorkSet.Capitals += -1; $WorkSet.Length += -1; break}
-                {$_ -lt ($WorkSet.Lowers + $WorkSet.Capitals + $WorkSet.Digits)} {$SecPwd.AppendChar(($DigList.ToCharArray() | Get-Random)); $WorkSet.Digits += -1; $WorkSet.Length += -1; break}
-                {$_ -lt ($WorkSet.Lowers + $WorkSet.Capitals + $WorkSet.Digits + $WorkSet.Symbols)} {$SecPwd.AppendChar(($SymList.ToCharArray() | Get-Random)); $WorkSet.Symbols += -1; $WorkSet.Length += -1; break}
-                Default {$SecPwd.AppendChar(($WhiList.ToCharArray() | Get-Random)); $WorkSet.Length += -1; break}
+                { $_ -lt ($WorkSet.Lowers) } { $SecPwd.AppendChar(($LowList.ToCharArray() | Get-Random)); $WorkSet.Lowers += -1; $WorkSet.Length += -1; break }
+                { $_ -lt ($WorkSet.Lowers + $WorkSet.Capitals) } { $SecPwd.AppendChar(($CapList.ToCharArray() | Get-Random)); $WorkSet.Capitals += -1; $WorkSet.Length += -1; break }
+                { $_ -lt ($WorkSet.Lowers + $WorkSet.Capitals + $WorkSet.Digits) } { $SecPwd.AppendChar(($DigList.ToCharArray() | Get-Random)); $WorkSet.Digits += -1; $WorkSet.Length += -1; break }
+                { $_ -lt ($WorkSet.Lowers + $WorkSet.Capitals + $WorkSet.Digits + $WorkSet.Symbols) } { $SecPwd.AppendChar(($SymList.ToCharArray() | Get-Random)); $WorkSet.Symbols += -1; $WorkSet.Length += -1; break }
+                Default { $SecPwd.AppendChar(($WhiList.ToCharArray() | Get-Random)); $WorkSet.Length += -1; break }
             }
         }
     } while (([System.Runtime.InteropServices.Marshal]::PtrToStringUni([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecPwd)) | Get-StringEntropy) -lt $Entropy)
